@@ -4,8 +4,9 @@
 name: Test Ansible roles with Molecule
 
 on:
-  release:
-    types: [created]
+  push:
+    branches: 
+    - develop
 
 jobs:
   deploy:
