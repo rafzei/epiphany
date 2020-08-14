@@ -1,0 +1,48 @@
+---
+- name: Open Distro for Elasticsearch - plugins | Upgrade
+  import_role:
+    name: opendistro_for_elastisearch
+    tasks_from: "{{ ansible_os_family }}/install-opendistro.yml"
+
+# TODO: is removing and adding plugins via 
+# TODO: /usr/share/elasticsearch/bin/elasticsearch-plugin add remove/add <plugin_name> needed?
+
+# TODO2: add verification if packages are upgraded correctly
+
+
+
+#- name: Open Distro for Elasticsearch - plugins | Verify installed version
+# 
+
+
+# - debug:
+#     msg:
+#       - "{{ ansible_facts.packages[item][0].version | regex_replace('^([0-9])\\.([0-9]*)\\.([0-9]*).*','\\1.\\2.\\3')
+# }}"
+#       - "{{ specification.versions.RedHat.opendistro }}"
+#   loop: "{{ opendistro_packages }}"
+
+
+# - name: Open Distro for Elasticsearch - plugins | Test if opendistro-* packages are upgradeable
+#   assert:
+#     that: "specification.versions.{{ ansible_os_family }}.opendistro is version(ansible_facts.packages[item][0].version | regex_replace('^([0-9])\\.([0-9]*).*', '\\1.\\2'), operator='ge', strict=True )"
+#     #that: "specification.versions.{{ ansible_os_family }}.opendistro 
+#     #      is version(ansible_facts.packages[item][0].version, '>=')"
+#     fail_msg: "{{ item }} version is not upgradeable"
+#     quiet: true
+#   loop: "{{ opendistro_packages }}"
+
+# - name: Open Distro for Elasticsearch - plugins | Get current versions
+#   set_fact:
+#     "version": "{{ ansible_facts.packages[item][0].version }}"
+#   loop: "{{ opendistro_packages }}"
+
+# - name: Upgrade Open Distro for Elasticsearch plugins
+#   block:
+
+
+# # when: któraś z zainstalowanych jest mniejsza od specification.versions.{{ ansible_os_family }}.opendistro
+#   when:
+#     - specification.versions.{{ ansible_os_family }}.opendistro
+#       is version(ansible_facts.packages[''][0].version, '>=')
+

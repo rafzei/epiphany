@@ -1,0 +1,181 @@
+---
+- name: Upgrade Opendistro for Elasticsearch version
+  block:
+    - name: Open Distro for Elasticsearch | Print elasticsearch-oss versions
+      debug:
+        msg:
+          - "Installed version: {{ ansible_facts.packages['elasticsearch-oss'][0].version }}"
+         # - "Target version: {{ specification.versions[ansible_os_family].elasticsearch_oss }}"
+          #- "{{ inventory_hostname }}"
+          - "{{ groups.logging[0] }}"
+          - "{{ groups.logging[1] }}"
+
+    - name: Open Distro for Elasticsearch | Set the upgrade_host for the first host
+      set_fact:
+        upgrade_host: "{{ groups.logging[1] }}" # there should be groups with ansible_facts.current_group_name instead of logging
+      when: "inventory_hostname == groups.logging[0]" # there should be groups with ansible_facts.current_group_name instead of logging 
+       
+    - name: Open Distro for Elasticsearch | Set the upgrade_host for the remaining hosts
+      set_fact:
+        upgrade_host: "{{ groups.logging[0] }}" # there should be groups with ansible_facts.current_group_name instead of logging
+      when: "inventory_hostname != groups.logging[0]" # there should be groups with ansible_facts.current_group_name instead of logging
+
+    - name: Open Distro for Elasticsearch | Ensure elasticsearch service is running
+      systemd:
+        name: elasticsearch
+        enabled: yes
+        state: started
+      register: elasticsearch_state
+
+    - name: Open Distro for Elasticsearch | Wait for elasticsearch.servce to start up if was stopped
+      wait_for:
+        port: "{{ es_transport_port }}"
+        host: "{{ ansible_default_ipv4.address | default(ansible_all_ipv4_addresses[0]) }}"
+        delay: 10
+      when: elasticsearch_state.changed == true
+ 
+    - name: Open Distro for Elasticsearch | Wait for 'yellow' or 'green' cluster health status
+      uri:
+        url: https://{{ ansible_default_ipv4.address | default(ansible_all_ipv4_addresses[0]) }}:{{ es_http_port }}/_cluster/health
+        method: GET
+        url_username: "{{ specification.status_user }}"
+        url_password: "{{ specification.status_user_password }}"
+        validate_certs: no
+      register: cluster_health
+      # until: "cluster_health.json.status == 'yellow' or cluster_health.json.status == 'green'"
+      # retries: 10
+      # delay: 15
+         
+         # TODO: error here if status is RED - to be verify if needed
+
+    - name: Open Distro for Elasticsearch | Check shard allocation in the cluster
+      uri:
+        url: https://{{ ansible_default_ipv4.address | default(ansible_all_ipv4_addresses[0]) }}:{{ es_http_port }}/_cluster/settings
+        method: GET
+        url_username: "{{ specification.status_user }}"
+        url_password: "{{ specification.status_user_password }}"
+        validate_certs: no
+        return_content: yes
+        body_format: json
+        body: GET /_cat/allocation
+      register: current_allocation
+    
+
+    - name: Open Distro for Elasticsearch | Set fact of current shard allocation
+      set_fact:
+        shard_allocation_before_upgrade: "{{ current_allocation }}"
+
+# TODO: Delete
+    - name: Display current allocation
+      debug:
+        msg: "{{ shard_allocation_before_upgrade.json }}"
+
+    - name:  Open Distro for Elasticsearch | Disable shard allocation for the cluster
+      uri:
+        url: https://{{ ansible_default_ipv4.address | default(ansible_all_ipv4_addresses[0]) }}:{{ es_http_port }}/_cluster/settings
+        method: PUT
+        url_username: "{{ specification.status_user }}"
+        url_password: "{{ specification.status_user_password }}"
+        validate_certs: no
+        body_format: json
+        body: '{"persistent":{"cluster.routing.allocation.enable": "primaries"}}'
+      register: response
+      until: "response.json.acknowledged == true"
+      retries: 10
+      delay: 15
+
+    - name:  Open Distro for Elasticsearch | Perform a synced flush
+      uri:
+        url: https://{{ ansible_default_ipv4.address | default(ansible_all_ipv4_addresses[0]) }}:{{ es_http_port }}/_flush/synced
+        method: POST
+        url_username: "{{ specification.status_user }}"
+        url_password: "{{ specification.status_user_password }}"
+        validate_certs: no
+        status_code: "200, 409"
+        
+    - name: Open Distro for Elasticsearch | Stop elasticsearch service
+      systemd:
+        name: elasticsearch
+        state: stopped
+
+    - name: Open Distro for Elasticsearch | Rolling Upgrade of the Elasticsearch
+      import_role:
+        name: opendistro_for_elasticsearch
+
+#this has to be done on upgrade_host i believe
+    - name: Open Distro for Elasticsearch | Wait for all shards to be reallocated
+      uri:
+        url: https://{{ ansible_default_ipv4.address | default(ansible_all_ipv4_addresses[0]) }}:{{ es_http_port }}/_cluster/health
+        method: GET
+        url_username: "{{ specification.status_user }}"
+        url_password: "{{ specification.status_user_password }}"
+        validate_certs: no
+      register: response
+      until: "response.json.relocating_shards == 0"
+      retries: 20
+      delay: 15
+
+    # - name: Display current allocation
+    #   debug:
+    #     msg: "{{ response.json }}"
+
+    - name: Open Distro for Elasticsearch | Start elasticsearch service
+      systemd:
+        name: elasticsearch
+        state: restarted #started
+        enabled: yes
+        daemon_reload: yes
+
+    - name: Open Distro for Elasticsearch | Wait for elasticsearch node to come back up
+      wait_for:
+        port: "{{ es_transport_port }}"
+        host: "{{ ansible_default_ipv4.address | default(ansible_all_ipv4_addresses[0]) }}"
+        delay: 10
+
+    - name: Open Distro for Elasticsearch | Wait for elasticsearch http to come back up
+      wait_for:
+        port: "{{ es_http_port }}"
+        host: "{{ ansible_default_ipv4.address | default(ansible_all_ipv4_addresses[0]) }}"
+        delay: 5
+
+    - name: Open Distro for Elasticsearch | Wait for 'yellow' or 'green' cluster health status
+      uri:
+        url: https://{{ ansible_default_ipv4.address | default(ansible_all_ipv4_addresses[0]) }}:{{ es_http_port }}/_cluster/health
+        method: GET
+        url_username: "{{ specification.status_user }}"
+        url_password: "{{ specification.status_user_password }}"
+        validate_certs: no
+      register: cluster_health
+      until: "cluster_health.json.status == 'yellow' or cluster_health.json.status == 'green'"
+      retries: 10
+      delay: 15
+
+    - name: Open Distro for Elasticsearch | Enable shard allocation for the cluster
+      uri:
+        url: https://{{ ansible_default_ipv4.address | default(ansible_all_ipv4_addresses[0]) }}:{{ es_http_port }}/_cluster/settings
+        method: PUT
+        url_username: "{{ specification.status_user }}"
+        url_password: "{{ specification.status_user_password }}"
+        validate_certs: no
+        body_format: json
+        body: "{{ shard_allocation_before_upgrade.json }}"
+      register: response
+      until: "response.json.acknowledged == true"
+      retries: 10
+      delay: 15
+
+    - name: Open Distro for Elasticsearch | Wait for 'green' node health status
+      uri:
+        url: https://{{ ansible_default_ipv4.address | default(ansible_all_ipv4_addresses[0]) }}:{{ es_http_port }}/_cat/health
+        method: GET
+        url_username: "{{ specification.status_user }}"
+        url_password: "{{ specification.status_user_password }}"
+        validate_certs: no
+        return_content: yes
+      register: response
+      until: "'green' in response.content"
+      retries: 50
+      delay: 5
+  # when:
+  #   - specification.versions.{{ ansible_os_family }}.elasticsearch_oss
+  #     is version(ansible_facts.packages['elasticsearch-oss'][0].version, '>=')

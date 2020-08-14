@@ -1,0 +1,34 @@
+---
+- name: Open Distro for Elasticsearch | Get information about installed packages as facts
+  package_facts:
+    manager: auto
+  when: ansible_facts.packages is undefined
+
+- name: Open Distro for Elasticsearch | Test if elasticsearch-oss package is installed
+  assert:
+    that: ansible_facts.packages['elasticsearch-oss'] is defined
+    fail_msg: elasticsearch-oss package not found, nothing to upgrade
+    quiet: true
+
+- name: Open Distro for Elasticsearch | Upgrade elasticsearch-oss
+  include_tasks: opendistro_for_elasticsearch/upgrade_elasticsearch.yml
+  vars:
+    es_http_port: 9200
+    es_transport_port: 9300
+
+- name: Open Distro for Elasticsearch - plugins | Test if opendistro-* packages are installed
+  assert:
+    that: ansible_facts.packages['{{ item }}'] is defined
+    fail_msg: "Missing package to upgrade: {{ item }}"
+    quiet: true
+  loop: 
+    - opendistro-alerting
+    - opendistro-index-management
+    - opendistro-job-scheduler
+    - opendistro-performance-analyzer
+    - opendistro-security 
+    - opendistro-sql
+    - opendistroforelasticsearch-kibana
+
+- name: Open Distro plugins upgrade
+  include_tasks: opendistro_for_elasticsearch/upgrade_plugins.yml
