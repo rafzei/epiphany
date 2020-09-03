@@ -89,15 +89,40 @@
         name: upgrade
         tasks_from: elasticsearch-curator
 
-# Disabling Filebeat upgrade. This will be included in future releases.
-#
-# - hosts: filebeat
-#   become: true
-#   become_method: sudo
-#   tasks:
-#     - import_role:
-#         name: upgrade
-#         tasks_from: filebeat
+- hosts: filebeat
+  become: true
+  become_method: sudo
+  tasks:
+    - import_role:
+        name: upgrade
+        tasks_from: filebeat
+
+- hosts: logging
+  become: true
+  become_method: sudo
+  serial: 1
+  tasks:
+    - import_role:
+        name: upgrade
+        tasks_from: opendistro_for_elasticsearch
+
+- hosts: opendistro_for_elasticsearch
+  become: true
+  become_method: sudo
+  serial: 1
+  tasks:
+    - import_role:
+        name: upgrade
+        tasks_from: opendistro_for_elasticsearch
+
+- hosts: kibana
+  become: true
+  become_method: sudo
+  serial: 1
+  tasks:
+    - import_role:
+        name: upgrade
+        tasks_from: kibana
 
 - hosts: kafka
   serial: 1
