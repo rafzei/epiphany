@@ -21,9 +21,9 @@ RUN chmod +x /config-pre.sh \
     && apt-get install --no-install-recommends -y \
         apt-utils dialog 2>&1 \
     && apt-get install --no-install-recommends -y \
-        curl gcc libffi-dev make musl-dev openssh-client ruby-full sudo tar unzip vim \
+        autossh curl gcc jq libcap2-bin libffi-dev make musl-dev openssh-client procps psmisc ruby-full sudo tar unzip vim \
         \
-        git git-lfs lsb-release procps \
+        git git-lfs lsb-release \
 \
     && echo "Installing helm binary ..." \
     && curl -fsSLO https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz \
@@ -35,6 +35,8 @@ RUN chmod +x /config-pre.sh \
     && chmod +x ./kubectl \
     && mv ./kubectl /usr/local/bin/kubectl \
     && kubectl version --client \
+\
+    && setcap 'cap_net_bind_service=+ep' /usr/bin/ssh \
 \
     && gem install \
         rake rspec_junit_formatter serverspec \

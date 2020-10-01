@@ -47,6 +47,8 @@ specification:
       enabled: yes
     - name: postgresql
       enabled: yes
+    - name: postgres-exporter
+      enabled: yes
     - name: haproxy
       enabled: yes
     - name: haproxy-exporter
@@ -92,6 +94,7 @@ specification:
       - firewall
     postgresql:
       - postgresql
+      - postgres-exporter
       - node-exporter
       - filebeat
       - firewall
@@ -119,9 +122,7 @@ specification:
       - firewall
       - vault
     kubernetes_master:
-      - image-registry
       - kubernetes-master
-      - repository
       - helm
       - applications
       - node-exporter
@@ -143,3 +144,9 @@ specification:
       - node-exporter
       - filebeat
       - firewall
+    repository:
+      - repository
+      - image-registry
+      - firewall
+      - filebeat
+      - node-exporter
