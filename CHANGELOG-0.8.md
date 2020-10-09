@@ -1,6 +1,6 @@
 # Changelog 0.8
 
-## [0.8.0] 2020-09-xx
+## [0.8.0rc1] 2020-10-08
 
 ### Added
 
@@ -36,9 +36,14 @@
 - [#1659](https://github.com/epiphany-platform/epiphany/issues/1659) - epicli upgrade fails on Ubuntu on downgrading kubernetes-cni package
 - [#1681](https://github.com/epiphany-platform/epiphany/issues/1681) - Node exporter does not work after the upgrade
 - [#1705](https://github.com/epiphany-platform/epiphany/issues/1705) - [RHEL/CentOS] epicli fails on downloading requirements - Docker CE repo not available
+- [#922](https://github.com/epiphany-platform/epiphany/issues/922) - [RHEL/CentOS] Elasticsearch v6 stops working after epicli upgrade
 
 ### Breaking changes
 
 - Repository machine was introduced (ref #1640)
 - Change cluster configuration manifest in order to be compatible with changes in #1640 [example] (https://github.com/epiphany-platform/epiphany/blob/develop/core/src/epicli/data/common/defaults/epiphany-cluster.yml)
 - Filebeat renamed fields in 7.0, see [here](https://www.elastic.co/guide/en/beats/libbeat/current/breaking-changes-7.0.html#_field_name_changes). The `source` field was removed and replaced with `log.file.path`.
+
+### Known issues
+
+- [1647](https://github.com/epiphany-platform/epiphany/issues/1647) - `epicli upgrade` fails on `[opendistro_for_elasticsearch : Provide jvm configuration file]` task
